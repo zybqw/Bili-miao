@@ -8,33 +8,37 @@
 # rpid=comment_root_id
 
 from json import loads
-from requests import exceptions, get, post
-from typing import Any, Dict, List, Optional, Tuple
 
-HEADERS: Dict[str, str] = {  # 设置请求头
+from requests import exceptions, get, post
+
+HEADERS = {  # 设置请求头
     "Content-Type": "application/json",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0",
 }
-def write(text: Any) -> None:
-    with open("F:\\qwq.txt", "a+", encoding="utf-8") as file:
+
+
+def write(text):
+    with open("F:\\awa.txt", "a+", encoding="utf-8") as file:
         file.write(str(text) + "\n")
 
+
 def send_request(
-    url: str,
-    method: str,
-    data: Optional[Dict[str, Any]] = None,
-    headers: Dict[str, str] = HEADERS,
-) -> Optional[str]:
+    url,
+    method,
+    data=None,
+    headers=HEADERS,
+):
     try:
-        
+
         response = (
             get(url, params=data, data=data, headers=headers)
             if method.upper() == "GET"
-            else post(url, data=data, headers=headers)
-            if method.upper() == "POST"
-            else None
+            else (
+                post(url, data=data, headers=headers)
+                if method.upper() == "POST"
+                else None
+            )
         )
-        
 
         response.raise_for_status()
 
@@ -51,35 +55,64 @@ def send_request(
         return response
     return None
 
-page_list = loads(send_request("https://api.bilibili.com/x/native_page/dynamic/index?page_id=169153", "get").text)["data"]["cards"][2]["item"][0]["item"]
+
+page_list = loads(
+    send_request(
+        "https://api.bilibili.com/x/native_page/dynamic/index?page_id=169153", "get"
+    ).text
+)["data"]["cards"][2]["item"][0]["item"]
 title_list = [page_list[i]["title"] for i in range(len(page_list))]
 item_id_list = [page_list[i]["item_id"] for i in range(len(page_list))]
-for i in range(len(item_id_list)):
-    comment_id_list = loads(send_request("https://api.bilibili.com/x/native_page/dynamic/inline?page_id={}".format(item_id_list[i]), "get").text)["data"]["cards"]
-    write(title_list[i])
+title_list.reverse()
+item_id_list.reverse()
+for ia in range(len(item_id_list)):
+    comment_id_list = loads(
+        send_request(
+            "https://api.bilibili.com/x/native_page/dynamic/inline?page_id={}".format(
+                item_id_list[ia]
+            ),
+            "get",
+        ).text
+    )["data"]["cards"]
+    print("\n" + title_list[ia])
+    write("\n" + title_list[ia])
     url_old = comment_num = 0
-    for i in range(3,len(comment_id_list)):
+    for ib in range(len(comment_id_list)):
+        # 本来是跳过前三个
         try:
-            url = comment_id_list[i]["item"][0]["item"][0]["uri"]
+            url = comment_id_list[ib]["item"][0]["item"][0]["uri"]
             if not url_old == url:
                 url_old = url
                 comment_id = url.split("=")[-1]
-                start_index = url.find("video/") + len("video/")  # 找到"video/"的位置，并加上它的长度
+                start_index = url.find("video/") + len(
+                    "video/"
+                )  # 找到"video/"的位置，并加上它的长度
                 end_index = url.find("?")  # 找到"?"的位置
                 video_id = url[start_index:end_index]
 
-                comments_detail = loads(send_request("https://api.bilibili.com/x/v2/reply/main?oid={}&type=1".format(video_id),"get").text)
-                #旧的api
-                for i in range(len(comments_detail["data"]["replies"])):
-                    if str(comments_detail["data"]["replies"][i]["rpid"]) == comment_id:
-                        comment = comments_detail["data"]["replies"][i]["content"]["message"]
-                        if not comment :
+                comments_detail = loads(
+                    send_request(
+                        "https://api.bilibili.com/x/v2/reply/main?oid={}&type=1".format(
+                            video_id
+                        ),
+                        "get",
+                    ).text
+                )
+                # 旧的api
+                for ic in range(len(comments_detail["data"]["replies"])):
+                    if (
+                        str(comments_detail["data"]["replies"][ic]["rpid"])
+                        == comment_id
+                    ):
+                        comment = comments_detail["data"]["replies"][ic]["content"][
+                            "message"
+                        ]
+                        if not comment:
                             break
                         comment_num += 1
-                        write(comment_num)
+                        write(str(comment_num) + ". ")
                         write(comment)
-                        print(comment_num)
-                        print(comment)
                         break
         except:
+            print(f"发生错误，位置:{title_list[ia]}{ib}")
             pass
